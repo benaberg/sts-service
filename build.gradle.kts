@@ -16,7 +16,7 @@ dependencies {
 tasks {
     withType<Jar> {
         manifest {
-            attributes["Main-Class"] = "fi.benaberg.sts.MainKt"
+            attributes["Main-Class"] = "fi.benaberg.sts.STSServiceKt"
         }
         configurations["compileClasspath"].forEach { file: File ->
             from(zipTree(file.absoluteFile))
