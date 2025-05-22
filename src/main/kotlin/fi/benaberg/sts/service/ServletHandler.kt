@@ -8,6 +8,7 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 
 /**
  * Handles setting up the server and incoming requests
@@ -28,6 +29,7 @@ class ServletHandler(port: Int, context: String) {
     private class RequestHandler : HttpHandler {
 
         @Volatile private var temperature = -1
+        @Volatile private var lastUpdated = 0L
 
         override fun handle(exchange: HttpExchange?) {
             if (exchange == null) {
@@ -40,6 +42,7 @@ class ServletHandler(port: Int, context: String) {
                         // Compose response
                         val jsonObject = JSONObject()
                         jsonObject.put(Constants.TEMPERATURE, temperature.toString())
+                        jsonObject.put(Constants.LAST_UPDATED, lastUpdated)
 
                         // Send response headers
                         val jsonString = jsonObject.toString()
@@ -71,6 +74,7 @@ class ServletHandler(port: Int, context: String) {
 
                         // Update temperature
                         temperature = jsonObject.getInt(Constants.TEMPERATURE)
+                        lastUpdated = Instant.now().toEpochMilli()
 
                         // Send response headers
                         exchange.sendResponseHeaders(200, -1)

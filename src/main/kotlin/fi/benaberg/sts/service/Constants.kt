@@ -7,5 +7,6 @@ class Constants {
 
     companion object {
         const val TEMPERATURE: String = "temperature"
+        const val LAST_UPDATED: String = "last-updated"
     }
 }
