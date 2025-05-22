@@ -1,4 +1,4 @@
-package fi.benaberg.sts
+package fi.benaberg.sts.service
 
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpHandler

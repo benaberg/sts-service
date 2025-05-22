@@ -1,4 +1,4 @@
-package fi.benaberg.sts
+package fi.benaberg.sts.service
 
 import java.io.File
 import java.io.FileInputStream

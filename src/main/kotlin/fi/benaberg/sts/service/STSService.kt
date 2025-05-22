@@ -1,4 +1,4 @@
-package fi.benaberg.sts
+package fi.benaberg.sts.service
 
 fun main() {
 
