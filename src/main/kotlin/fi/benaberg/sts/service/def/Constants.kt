@@ -1,7 +1,7 @@
-package fi.benaberg.sts.service
+package fi.benaberg.sts.service.def
 
 /**
- * This class contains global constant declarations
+ * This class contains global constant declarations.
  */
 class Constants {
 

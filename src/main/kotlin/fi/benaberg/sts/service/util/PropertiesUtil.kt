@@ -1,11 +1,14 @@
-package fi.benaberg.sts.service
+package fi.benaberg.sts.service.util
 
 import java.io.File
 import java.io.FileInputStream
-import java.util.Properties
+import java.util.*
 
 private const val PROPERTIES = "service.properties"
 
+/**
+ * Util class for reading service properties
+ */
 class PropertiesUtil {
 
     private val properties = Properties()
