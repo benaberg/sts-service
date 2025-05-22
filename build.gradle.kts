@@ -18,7 +18,7 @@ tasks {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
         manifest {
-            attributes["Main-Class"] = "fi.benaberg.sts.STSServiceKt"
+            attributes["Main-Class"] = "fi.benaberg.sts.service.STSServiceKt"
         }
 
         configurations["compileClasspath"].forEach { file: File ->
