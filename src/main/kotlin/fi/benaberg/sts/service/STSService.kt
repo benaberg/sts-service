@@ -6,7 +6,7 @@ import fi.benaberg.sts.service.util.PropertiesUtil
 import kotlin.io.path.Path
 
 /**
- * Main service initialization
+ * Main service initialization.
  */
 fun main() {
 

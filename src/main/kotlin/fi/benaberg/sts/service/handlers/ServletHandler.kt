@@ -4,6 +4,8 @@ import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpHandler
 import com.sun.net.httpserver.HttpServer
 import fi.benaberg.sts.service.def.Constants
+import fi.benaberg.sts.service.def.HttpResponse
+import fi.benaberg.sts.service.util.LogUtil
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
@@ -12,7 +14,7 @@ import java.nio.charset.StandardCharsets
 import java.time.Instant
 
 /**
- * Handles setting up the server and incoming requests.
+ * Handles server initializing and request handling.
  */
 class ServletHandler(port: Int, context: String, storageHandler: StorageHandler) {
 
@@ -41,7 +43,7 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
                 }
             }
             catch (exception: JSONException) {
-                println("Error while reading stored temperature reading: " + exception.message)
+                LogUtil.write("Error while reading stored temperature reading: " + exception.message)
             }
         }
 
@@ -53,7 +55,7 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
                 "GET" -> {
                     // Fetch temperature
                     try {
-                        println("Received temperature GET")
+                        LogUtil.write("Received temperature GET")
                         // Compose response
                         val jsonObject = JSONObject()
                         jsonObject.put(Constants.TEMPERATURE, temperature.toString())
@@ -61,30 +63,30 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
 
                         // Send response headers
                         val jsonString = jsonObject.toString()
-                        exchange.sendResponseHeaders(200, jsonString.length.toLong())
+                        exchange.sendResponseHeaders(HttpResponse.OK, jsonString.length.toLong())
 
                         // Write response
                         val os = exchange.responseBody
                         os.write(jsonString.toByteArray())
                         os.close()
-                        println("Successfully served temperature!")
+                        LogUtil.write("Successfully served temperature!")
                     }
                     catch (exception: Exception) {
                         when (exception) {
                             is JSONException -> {
-                                println("Could not compose temperature JSON. Reason: " + exception.message)
+                                LogUtil.write("Could not compose temperature JSON. Reason: " + exception.message)
                             }
                             is IOException -> {
-                                println("Could not write response. Reason: " + exception.message)
+                                LogUtil.write("Could not write response. Reason: " + exception.message)
                             }
                         }
-                        exchange.sendResponseHeaders(500, -1)
+                        exchange.sendResponseHeaders(HttpResponse.INTERNAL_SERVER_ERROR, -1)
                     }
                 }
                 "PUT" -> {
                     // Update temperature
                     try {
-                        println("Received temperature PUT")
+                        LogUtil.write("Received temperature PUT")
 
                         // Read request
                         val jsonString = String(exchange.requestBody.readAllBytes(), StandardCharsets.UTF_8)
@@ -101,22 +103,22 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
                         storageHandler.storeData(storedJson)
 
                         // Send response headers
-                        exchange.sendResponseHeaders(200, -1)
-                        println("Successfully updated temperature!")
+                        exchange.sendResponseHeaders(HttpResponse.OK, -1)
+                        LogUtil.write("Successfully updated temperature!")
                     }
                     catch (exception: Exception) {
                         when (exception) {
                             is JSONException -> {
-                                println("Could not parse JSON in request body. Reason: " + exception.message)
+                                LogUtil.write("Could not parse JSON in request body. Reason: " + exception.message)
                             }
                             is IOException -> {
-                                println("IOException while handling request. Reason: " + exception.message)
+                                LogUtil.write("IOException while handling request. Reason: " + exception.message)
                             }
                             is SecurityException -> {
-                                println("SecurityException while handling request. Reason: " + exception.message)
+                                LogUtil.write("SecurityException while handling request. Reason: " + exception.message)
                             }
                         }
-                        exchange.sendResponseHeaders(500, -1)
+                        exchange.sendResponseHeaders(HttpResponse.INTERNAL_SERVER_ERROR, -1)
                     }
                 }
             }

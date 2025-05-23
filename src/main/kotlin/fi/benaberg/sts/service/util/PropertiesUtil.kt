@@ -7,7 +7,7 @@ import java.util.*
 private const val PROPERTIES = "service.properties"
 
 /**
- * Util class for reading service properties
+ * Util class for reading service properties.
  */
 class PropertiesUtil {
 
