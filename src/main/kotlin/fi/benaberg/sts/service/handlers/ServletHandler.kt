@@ -32,14 +32,14 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
     private class RequestHandler(private val storageHandler: StorageHandler) : HttpHandler {
 
         @Volatile private var temperature = -1
-        @Volatile private var lastUpdated = 0L
+        @Volatile private var timestamp = 0L
 
         init {
             try {
                 val storedReading = storageHandler.readData()
                 if (storedReading != null) {
                     temperature = storedReading.getInt(Constants.TEMPERATURE)
-                    lastUpdated = storedReading.getLong(Constants.LAST_UPDATED)
+                    timestamp = storedReading.getLong(Constants.TIMESTAMP)
                 }
             }
             catch (exception: JSONException) {
@@ -59,7 +59,7 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
                         // Compose response
                         val jsonObject = JSONObject()
                         jsonObject.put(Constants.TEMPERATURE, temperature)
-                        jsonObject.put(Constants.LAST_UPDATED, lastUpdated)
+                        jsonObject.put(Constants.TIMESTAMP, timestamp)
 
                         // Send response headers
                         val jsonString = jsonObject.toString()
@@ -94,12 +94,12 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
 
                         // Update temperature
                         temperature = jsonObject.getInt(Constants.TEMPERATURE)
-                        lastUpdated = Instant.now().toEpochMilli()
+                        timestamp = Instant.now().toEpochMilli()
 
                         // Store temperature
                         val storedJson = JSONObject()
                         storedJson.put(Constants.TEMPERATURE, temperature)
-                        storedJson.put(Constants.LAST_UPDATED, lastUpdated)
+                        storedJson.put(Constants.TIMESTAMP, timestamp)
                         storageHandler.storeData(storedJson)
 
                         // Send response headers
