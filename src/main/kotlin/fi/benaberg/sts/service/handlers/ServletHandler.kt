@@ -58,7 +58,7 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
                         LogUtil.write("Received temperature GET")
                         // Compose response
                         val jsonObject = JSONObject()
-                        jsonObject.put(Constants.TEMPERATURE, temperature.toString())
+                        jsonObject.put(Constants.TEMPERATURE, temperature)
                         jsonObject.put(Constants.LAST_UPDATED, lastUpdated)
 
                         // Send response headers
