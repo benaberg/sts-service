@@ -11,6 +11,8 @@ repositories {
 
 dependencies {
     implementation("org.json:json:20250517")
+    implementation("org.java-websocket:Java-WebSocket:1.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
 }
 
 tasks {

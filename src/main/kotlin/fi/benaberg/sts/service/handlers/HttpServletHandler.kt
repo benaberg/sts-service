@@ -16,36 +16,22 @@ import java.time.Instant
 /**
  * Handles server initializing and request handling.
  */
-class ServletHandler(port: Int, context: String, storageHandler: StorageHandler) {
+class HttpServletHandler(private val httpPort: Int, wsPort: Int, temperatureContext: String, dashboardContext: String, storageHandler: StorageHandler) {
 
-    private val server: HttpServer by lazy { HttpServer.create(InetSocketAddress(port), 0) }
+    private val server: HttpServer by lazy { HttpServer.create(InetSocketAddress(httpPort), 0) }
 
     init {
-        server.createContext(context, RequestHandler(storageHandler))
+        server.createContext(temperatureContext, TemperatureRequestHandler(storageHandler))
+        server.createContext(dashboardContext, DashboardRequestHandler(wsPort))
         server.executor = null
     }
 
     fun start() {
+        LogUtil.write("Setting up HTTP servlet on port: $httpPort")
         server.start()
     }
 
-    private class RequestHandler(private val storageHandler: StorageHandler) : HttpHandler {
-
-        @Volatile private var temperature = -1
-        @Volatile private var timestamp = 0L
-
-        init {
-            try {
-                val storedReading = storageHandler.readData()
-                if (storedReading != null) {
-                    temperature = storedReading.getInt(Constants.TEMPERATURE)
-                    timestamp = storedReading.getLong(Constants.TIMESTAMP)
-                }
-            }
-            catch (exception: JSONException) {
-                LogUtil.write("Error while reading stored temperature reading: " + exception.message)
-            }
-        }
+    private class TemperatureRequestHandler(private val storageHandler: StorageHandler) : HttpHandler {
 
         override fun handle(exchange: HttpExchange?) {
             if (exchange == null) {
@@ -58,8 +44,8 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
                         LogUtil.write("Received temperature GET")
                         // Compose response
                         val jsonObject = JSONObject()
-                        jsonObject.put(Constants.TEMPERATURE, temperature)
-                        jsonObject.put(Constants.TIMESTAMP, timestamp)
+                        jsonObject.put(Constants.TEMPERATURE, storageHandler.getTemperatureReading().temperature)
+                        jsonObject.put(Constants.TIMESTAMP, storageHandler.getTemperatureReading().timestamp)
 
                         // Send response headers
                         val jsonString = jsonObject.toString()
@@ -93,13 +79,14 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
                         val jsonObject = JSONObject(jsonString)
 
                         // Update temperature
-                        temperature = jsonObject.getInt(Constants.TEMPERATURE)
-                        timestamp = Instant.now().toEpochMilli()
+
+                        storageHandler.setTemperature(jsonObject.getInt(Constants.TEMPERATURE))
+                        storageHandler.setTimestamp(Instant.now().toEpochMilli())
 
                         // Store temperature
                         val storedJson = JSONObject()
-                        storedJson.put(Constants.TEMPERATURE, temperature)
-                        storedJson.put(Constants.TIMESTAMP, timestamp)
+                        storedJson.put(Constants.TEMPERATURE, storageHandler.getTemperatureReading().temperature)
+                        storedJson.put(Constants.TIMESTAMP, storageHandler.getTemperatureReading().timestamp)
                         storageHandler.storeData(storedJson)
 
                         // Send response headers
@@ -121,6 +108,33 @@ class ServletHandler(port: Int, context: String, storageHandler: StorageHandler)
                         exchange.sendResponseHeaders(HttpResponse.INTERNAL_SERVER_ERROR, -1)
                     }
                 }
+            }
+        }
+    }
+
+    private class DashboardRequestHandler(private val port: Int) : HttpHandler {
+
+        override fun handle(exchange: HttpExchange) {
+            serveHtml(exchange)
+        }
+
+        fun serveHtml(exchange: HttpExchange) {
+            try {
+                // Get HTML
+                var html = object {}.javaClass.getResource("/fi/benaberg/sts/service/html/Dashboard.html")!!.readText()
+                html = html.replace("{{WS_PORT}}", port.toString())
+
+                // Serve HTML
+                val bytes = html.toByteArray()
+                exchange.responseHeaders?.add("Content-Type", "text/html; charset=UTF-8")
+                exchange.sendResponseHeaders(200, bytes.size.toLong())
+                exchange.responseBody.use { it.write(bytes) }
+            }
+            catch (exception: Exception) {
+                LogUtil.write("Failed to serve HTML: ${exception.message}")
+            }
+            finally {
+                exchange.close()
             }
         }
     }

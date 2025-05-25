@@ -1,5 +1,7 @@
 package fi.benaberg.sts.service.handlers
 
+import fi.benaberg.sts.service.def.Constants
+import fi.benaberg.sts.service.model.TemperatureReading
 import fi.benaberg.sts.service.util.LogUtil
 import org.json.JSONException
 import org.json.JSONObject
@@ -13,8 +15,35 @@ import java.util.*
  */
 class StorageHandler(private val dataDirPath: Path) {
 
+    private val temperatureReading = TemperatureReading(-1, 0)
+
     companion object {
         const val READING_FILE = "stored_reading.json"
+    }
+
+    init {
+        try {
+            val storedReading = readData()
+            if (storedReading != null) {
+                temperatureReading.temperature = storedReading.getInt(Constants.TEMPERATURE)
+                temperatureReading.timestamp = storedReading.getLong(Constants.TIMESTAMP)
+            }
+        }
+        catch (exception: JSONException) {
+            LogUtil.write("Error while reading stored temperature reading: " + exception.message)
+        }
+    }
+
+    fun getTemperatureReading() : TemperatureReading {
+        return temperatureReading
+    }
+
+    fun setTemperature(temperature: Int) {
+        temperatureReading.temperature = temperature
+    }
+
+    fun setTimestamp(timestamp: Long) {
+        temperatureReading.timestamp = timestamp
     }
 
     @Throws(IOException::class, SecurityException::class)
