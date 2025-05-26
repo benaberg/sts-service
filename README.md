@@ -1,4 +1,6 @@
 # sts-service
 Implementation of the Sauna Temperature Sensor (STS) backend service.
 
-This service provides two HTTP endpoints, one for setting the current sauna temperature (PUT) and one for fetching the current sauna temperature (GET).
+This service provides two HTTP endpoints (deafault port 9090): 
+- <b>/dashboard</b> for a basic dashboard showing the current temperature reading and timestamp
+- <b>/temperature</b> for setting the current sauna temperature (PUT) or fetching the current sauna temperature (GET) as JSON
