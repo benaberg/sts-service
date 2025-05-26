@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets
  *      - Format identifier ("sts")
  *      - Format version ("1")
  *  - Payload:
- *      - Timestamp (4 bytes)
+ *      - Timestamp (8 bytes)
  *      - Temperature (1 byte)
  *
  * The header is appended to the beginning of the file.
