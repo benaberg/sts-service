@@ -11,15 +11,15 @@
         <h1 id="temperature">Current Temperature: -</h1>
         <h4 id="lastUpdated">Last Updated: -</h4>
         <script>
-            const socket = new WebSocket("ws://localhost:{{WS_PORT}}");
+            const socket = new WebSocket("ws://" + location.hostname + ":{{WS_PORT}}");
             socket.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 document.getElementById("temperature").textContent = "Current Temperature: " + data.temperature + "°C";
                 document.getElementById("lastUpdated").textContent = "Last Updated: " + formatTimestamp(data.timestamp);
                 document.getElementById("lastUpdated").style.visibility = "visible";
             };
-            socket.onerror = () => {
-                document.getElementById("temperature").textContent = "Connection error.";
+            socket.onerror = e => {
+                document.getElementById("temperature").textContent = "Connection error: " + e.message;
                 document.getElementById("lastUpdated").style.visibility = "hidden";
             };
 
