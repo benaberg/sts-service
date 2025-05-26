@@ -1,8 +1,8 @@
 package fi.benaberg.sts.service
 
-import fi.benaberg.sts.service.handlers.WsServletHandler
 import fi.benaberg.sts.service.handlers.HttpServletHandler
 import fi.benaberg.sts.service.handlers.StorageHandler
+import fi.benaberg.sts.service.handlers.WsServletHandler
 import fi.benaberg.sts.service.util.PropertiesUtil
 import kotlin.concurrent.thread
 import kotlin.io.path.Path

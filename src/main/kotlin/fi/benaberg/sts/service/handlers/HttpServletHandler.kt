@@ -11,7 +11,6 @@ import org.json.JSONObject
 import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.charset.StandardCharsets
-import java.time.Instant
 
 /**
  * Handles server initializing and request handling.
@@ -78,16 +77,8 @@ class HttpServletHandler(private val httpPort: Int, wsPort: Int, temperatureCont
                         val jsonString = String(exchange.requestBody.readAllBytes(), StandardCharsets.UTF_8)
                         val jsonObject = JSONObject(jsonString)
 
-                        // Update temperature
-
-                        storageHandler.setTemperature(jsonObject.getInt(Constants.TEMPERATURE))
-                        storageHandler.setTimestamp(Instant.now().toEpochMilli())
-
                         // Store temperature
-                        val storedJson = JSONObject()
-                        storedJson.put(Constants.TEMPERATURE, storageHandler.getTemperatureReading().temperature)
-                        storedJson.put(Constants.TIMESTAMP, storageHandler.getTemperatureReading().timestamp)
-                        storageHandler.storeData(storedJson)
+                        storageHandler.storeData(jsonObject)
 
                         // Send response headers
                         exchange.sendResponseHeaders(HttpResponse.OK, -1)
@@ -96,14 +87,12 @@ class HttpServletHandler(private val httpPort: Int, wsPort: Int, temperatureCont
                     catch (exception: Exception) {
                         when (exception) {
                             is JSONException -> {
-                                LogUtil.write("Could not parse JSON in request body. Reason: " + exception.message)
+                                LogUtil.write("Error while storing reading: could not parse JSON in request body. Reason: ${exception.message}")
                             }
                             is IOException -> {
-                                LogUtil.write("IOException while handling request. Reason: " + exception.message)
+                                LogUtil.write("IOException while handling request. Reason: ${exception.message}")
                             }
-                            is SecurityException -> {
-                                LogUtil.write("SecurityException while handling request. Reason: " + exception.message)
-                            }
+                            else -> LogUtil.write("Error while handling request. Reason: ${exception.message}")
                         }
                         exchange.sendResponseHeaders(HttpResponse.INTERNAL_SERVER_ERROR, -1)
                     }
