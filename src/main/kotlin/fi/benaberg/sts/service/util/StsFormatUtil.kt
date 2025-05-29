@@ -46,7 +46,7 @@ class StsFormatUtil {
          */
         @Throws(StsFormatException::class)
         fun encode(log: LogRef, temperatureReading: TemperatureReading): ByteArray {
-            log.write("Encoding temperature reading with timestamp: ${temperatureReading.temperature}, temperature: ${temperatureReading.temperature}")
+            log.write("Encoding temperature reading with timestamp: ${temperatureReading.timestamp}, temperature: ${temperatureReading.temperature}")
             try {
                 // Check that temperature reading is valid
                 if (temperatureReading.temperature < -127 || temperatureReading.temperature > 128) {
