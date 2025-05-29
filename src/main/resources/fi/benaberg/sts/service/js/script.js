@@ -4,13 +4,14 @@ socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     if (data.temperature && data.timestamp) {
         document.getElementById("temperature").textContent = "Current Temperature: " + data.temperature + "°C";
-       document.getElementById("lastUpdated").textContent = "Last Updated: " + formatTimestamp(data.timestamp);
+        document.getElementById("lastUpdated").textContent = "Last Updated: " + formatTimestamp(data.timestamp);
         document.getElementById("lastUpdated").style.visibility = "visible";
     }
     if (data.log) {
         appendLogMessage(data.log);
     }
 };
+
 socket.onerror = e => {
     document.getElementById("temperature").textContent = "Connection error: " + e.message;
     document.getElementById("lastUpdated").style.visibility = "hidden";
