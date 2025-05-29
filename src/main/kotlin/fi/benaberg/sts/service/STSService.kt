@@ -26,11 +26,12 @@ fun main() {
     val temperatureContext = propertiesUtil.getProperty("service.context.temperature")
     val dashboardContext = propertiesUtil.getProperty("service.context.dashboard")
 
-    // Data directory resolved relative to working location
-    val dataDir = propertiesUtil.getProperty("service.dir.data")
+    // Data directories resolved relative to working location
+    val applicationDataDir = propertiesUtil.getProperty("service.dir.data.application")
+    val ltsDataDir = propertiesUtil.getProperty("service.dir.data.lts")
 
     // Setup storage handler
-    val storageHandler = StorageHandler(log, Path(dataDir))
+    val storageHandler = StorageHandler(log, Path(applicationDataDir), Path(ltsDataDir))
 
     // Start HTTP server
     thread {

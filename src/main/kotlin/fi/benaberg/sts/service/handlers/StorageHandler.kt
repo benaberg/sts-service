@@ -19,7 +19,7 @@ import kotlin.io.path.readBytes
 /**
  * Handles storing temperature readings to disk.
  */
-class StorageHandler(private val log: LogRef, private val dataDirPath: Path) {
+class StorageHandler(private val log: LogRef, private val applicationDataDirPath: Path, private val ltsDataDirPath: Path) {
 
     private val temperatureReading = TemperatureReading(-1, 0)
     private var storedReadings = 0
@@ -73,8 +73,8 @@ class StorageHandler(private val log: LogRef, private val dataDirPath: Path) {
         storeJson.put(Constants.TEMPERATURE, temperature)
 
         // Resolve files
-        val lastReceivedFile = dataDirPath.toFile().resolve(LAST_READING_FILE)
-        val storedReadingsFile = dataDirPath.toFile().resolve(STORED_READINGS_FILE)
+        val lastReceivedFile = applicationDataDirPath.toFile().resolve(LAST_READING_FILE)
+        val storedReadingsFile = ltsDataDirPath.toFile().resolve(STORED_READINGS_FILE)
 
         // Verify that files and parent directories exist
         if (!lastReceivedFile.exists()) {
@@ -102,7 +102,7 @@ class StorageHandler(private val log: LogRef, private val dataDirPath: Path) {
     private fun readLastReceived(): JSONObject? {
         log.write("Reading stored temperature...")
 
-        val filePath = dataDirPath.resolve(LAST_READING_FILE)
+        val filePath = applicationDataDirPath.resolve(LAST_READING_FILE)
 
         // Return null if no temperature reading exists
         if (!Files.exists(filePath)) {
@@ -118,7 +118,7 @@ class StorageHandler(private val log: LogRef, private val dataDirPath: Path) {
     }
 
     private fun readStoredReadings(): List<TemperatureReading> {
-        val filePath = dataDirPath.resolve(STORED_READINGS_FILE)
+        val filePath = ltsDataDirPath.resolve(STORED_READINGS_FILE)
         if (Files.exists(filePath)) {
             return StsFormatUtil.decode(log, filePath.readBytes())
         }
@@ -127,11 +127,11 @@ class StorageHandler(private val log: LogRef, private val dataDirPath: Path) {
 
     private fun handleCorruptReadingsFile() {
         try {
-            val corruptFilePath = dataDirPath
+            val corruptFilePath = ltsDataDirPath
                 .resolve(CORRUPT_READINGS)
                 .resolve("${Instant.now().toEpochMilli()}-$STORED_READINGS_FILE")
             corruptFilePath.toFile().parentFile.mkdirs()
-            Files.move(dataDirPath.resolve(STORED_READINGS_FILE), corruptFilePath, StandardCopyOption.ATOMIC_MOVE)
+            Files.move(ltsDataDirPath.resolve(STORED_READINGS_FILE), corruptFilePath, StandardCopyOption.ATOMIC_MOVE)
         }
         catch (exception: IOException) {
             log.write("Error while moving file: ${exception.message}")
