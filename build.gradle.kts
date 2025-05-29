@@ -10,6 +10,7 @@ repositories {
 }
 
 dependencies {
+    implementation("org.slf4j:slf4j-nop:2.0.17")
     implementation("org.json:json:20250517")
     implementation("org.java-websocket:Java-WebSocket:1.6.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")

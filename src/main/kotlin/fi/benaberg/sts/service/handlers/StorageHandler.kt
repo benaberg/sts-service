@@ -3,7 +3,7 @@ package fi.benaberg.sts.service.handlers
 import fi.benaberg.sts.service.def.Constants
 import fi.benaberg.sts.service.def.StsFormatException
 import fi.benaberg.sts.service.model.TemperatureReading
-import fi.benaberg.sts.service.util.LogUtil
+import fi.benaberg.sts.service.LogRef
 import fi.benaberg.sts.service.util.StsFormatUtil
 import org.json.JSONException
 import org.json.JSONObject
@@ -19,7 +19,7 @@ import kotlin.io.path.readBytes
 /**
  * Handles storing temperature readings to disk.
  */
-class StorageHandler(private val dataDirPath: Path) {
+class StorageHandler(private val log: LogRef, private val dataDirPath: Path) {
 
     private val temperatureReading = TemperatureReading(-1, 0)
     private var storedReadings = 0
@@ -38,15 +38,15 @@ class StorageHandler(private val dataDirPath: Path) {
                 temperatureReading.timestamp = storedReading.getLong(Constants.TIMESTAMP)
             }
             storedReadings = readStoredReadings().size
-            LogUtil.write("Read $storedReadings currently stored readings from disk.")
+            log.write("Read $storedReadings currently stored readings from disk.")
         }
         catch (exception: Exception) {
             when (exception) {
                 is JSONException -> {
-                    LogUtil.write("Error while reading stored temperature reading: ${exception.message}")
+                    log.write("Error while reading stored temperature reading: ${exception.message}")
                 }
                 is StsFormatException -> {
-                    LogUtil.write("Error while reading stored temperature readings: ${exception.message}. Moving file to corrupt files.")
+                    log.write("Error while reading stored temperature readings: ${exception.message}. Moving file to corrupt files.")
                     handleCorruptReadingsFile()
                 }
             }
@@ -59,7 +59,7 @@ class StorageHandler(private val dataDirPath: Path) {
 
     @Throws(IOException::class, JSONException::class)
     fun storeData(jsonObject: JSONObject) {
-        LogUtil.write("Storing received temperature...")
+        log.write("Storing received temperature...")
 
         val timestamp = Instant.now().toEpochMilli()
         val temperature = jsonObject.getInt(Constants.TEMPERATURE)
@@ -93,26 +93,26 @@ class StorageHandler(private val dataDirPath: Path) {
         if (storedReadingsFile.length() == 0L) {
             storedReadingsFile.writeBytes(StsFormatUtil.encodeHeader())
         }
-        storedReadingsFile.appendBytes(StsFormatUtil.encode(temperatureReading))
-        LogUtil.write("Successfully stored temperature data: $storeJson ")
-        LogUtil.write("Total stored readings: ${++storedReadings}")
+        storedReadingsFile.appendBytes(StsFormatUtil.encode(log, temperatureReading))
+        log.write("Successfully stored temperature data: $storeJson ")
+        log.write("Total stored readings: ${++storedReadings}")
     }
 
     @Throws(JSONException::class)
     private fun readLastReceived(): JSONObject? {
-        LogUtil.write("Reading stored temperature...")
+        log.write("Reading stored temperature...")
 
         val filePath = dataDirPath.resolve(LAST_READING_FILE)
 
         // Return null if no temperature reading exists
         if (!Files.exists(filePath)) {
-            LogUtil.write("No stored temperature found.")
+            log.write("No stored temperature found.")
             return null
         }
 
         // Read file contents
         val jsonObject = JSONObject(filePath.toFile().readText())
-        LogUtil.write("Successfully read stored temperature!")
+        log.write("Successfully read stored temperature!")
 
         return jsonObject
     }
@@ -120,7 +120,7 @@ class StorageHandler(private val dataDirPath: Path) {
     private fun readStoredReadings(): List<TemperatureReading> {
         val filePath = dataDirPath.resolve(STORED_READINGS_FILE)
         if (Files.exists(filePath)) {
-            return StsFormatUtil.decode(filePath.readBytes())
+            return StsFormatUtil.decode(log, filePath.readBytes())
         }
         return emptyList()
     }
@@ -134,7 +134,7 @@ class StorageHandler(private val dataDirPath: Path) {
             Files.move(dataDirPath.resolve(STORED_READINGS_FILE), corruptFilePath, StandardCopyOption.ATOMIC_MOVE)
         }
         catch (exception: IOException) {
-            LogUtil.write("Error while moving file: ${exception.message}")
+            log.write("Error while moving file: ${exception.message}")
         }
     }
 }

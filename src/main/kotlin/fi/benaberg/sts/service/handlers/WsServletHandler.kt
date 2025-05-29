@@ -1,7 +1,7 @@
 package fi.benaberg.sts.service.handlers
 
 import fi.benaberg.sts.service.def.Constants
-import fi.benaberg.sts.service.util.LogUtil
+import fi.benaberg.sts.service.LogRef
 import kotlinx.coroutines.*
 import org.java_websocket.WebSocket
 import org.java_websocket.handshake.ClientHandshake
@@ -9,12 +9,17 @@ import org.java_websocket.server.WebSocketServer
 import org.json.JSONObject
 import java.net.InetSocketAddress
 
-class WsServletHandler(private val port: Int, private val storageHandler: StorageHandler) : WebSocketServer(InetSocketAddress(port)) {
+class WsServletHandler(
+    private val log: LogRef,
+    private val port: Int,
+    private val storageHandler: StorageHandler,
+    private val sessions: MutableSet<WebSocket>)
+    : WebSocketServer(InetSocketAddress(port)) {
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     override fun onStart() {
-        LogUtil.write("Setting up WS servlet on port: $port")
+        log.write("Setting up WS servlet on port: $port")
 
         scope.launch {
             while (true) {
@@ -31,19 +36,24 @@ class WsServletHandler(private val port: Int, private val storageHandler: Storag
         }
     }
 
-    override fun onOpen(socket: WebSocket?, clientHandshake: ClientHandshake?) {
-        LogUtil.write("New WS connection established from: ${socket?.remoteSocketAddress}.")
+    override fun onOpen(socket: WebSocket, clientHandshake: ClientHandshake?) {
+        log.write("New WS connection established from: ${socket.remoteSocketAddress}.")
+        sessions.add(socket)
+
+        // Send current log to session
+        log.sendLog(socket)
     }
 
-    override fun onClose(socket: WebSocket?, p1: Int, p2: String?, p3: Boolean) {
-        LogUtil.write("WS connection from ${socket?.remoteSocketAddress} closed.")
+    override fun onClose(socket: WebSocket, p1: Int, p2: String?, p3: Boolean) {
+        log.write("WS connection from ${socket.remoteSocketAddress} closed.")
+        sessions.remove(socket)
     }
 
-    override fun onMessage(socket: WebSocket?, message: String?) {
-        LogUtil.write("WS message: $message from ${socket?.remoteSocketAddress}")
+    override fun onMessage(socket: WebSocket, message: String?) {
+        log.write("WS message: $message from ${socket.remoteSocketAddress}")
     }
 
-    override fun onError(socket: WebSocket?, exception: Exception?) {
-        LogUtil.write("WS error: " + exception?.message + " from ${socket?.remoteSocketAddress}")
+    override fun onError(socket: WebSocket, exception: Exception?) {
+        log.write("WS error: " + exception?.message + " from ${socket.remoteSocketAddress}")
     }
 }

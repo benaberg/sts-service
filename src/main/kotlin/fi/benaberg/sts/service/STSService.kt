@@ -4,6 +4,8 @@ import fi.benaberg.sts.service.handlers.HttpServletHandler
 import fi.benaberg.sts.service.handlers.StorageHandler
 import fi.benaberg.sts.service.handlers.WsServletHandler
 import fi.benaberg.sts.service.util.PropertiesUtil
+import org.java_websocket.WebSocket
+import java.util.*
 import kotlin.concurrent.thread
 import kotlin.io.path.Path
 
@@ -12,9 +14,13 @@ import kotlin.io.path.Path
  */
 fun main() {
 
-    val propertiesUtil = PropertiesUtil()
+    val sessions = Collections.synchronizedSet(mutableSetOf<WebSocket>())
+    val log = LogRef(sessions)
+
+    log.write("Starting STS Service...")
 
     // Servlet ports and context paths
+    val propertiesUtil = PropertiesUtil()
     val httpPort = propertiesUtil.getProperty("service.port.http").toInt()
     val wsPort = propertiesUtil.getProperty("service.port.ws").toInt()
     val temperatureContext = propertiesUtil.getProperty("service.context.temperature")
@@ -24,18 +30,18 @@ fun main() {
     val dataDir = propertiesUtil.getProperty("service.dir.data")
 
     // Setup storage handler
-    val storageHandler = StorageHandler(Path(dataDir))
+    val storageHandler = StorageHandler(log, Path(dataDir))
 
     // Start HTTP server
     thread {
-        val httpServletHandler = HttpServletHandler(httpPort, wsPort, temperatureContext, dashboardContext, storageHandler)
+        val httpServletHandler = HttpServletHandler(log, httpPort, wsPort, temperatureContext, dashboardContext, storageHandler)
         httpServletHandler.start()
     }
 
     // Start dashboard (WS) server
     thread {
         // Start server
-        val wsServletHandler = WsServletHandler(wsPort, storageHandler)
+        val wsServletHandler = WsServletHandler(log, wsPort, storageHandler, sessions)
         wsServletHandler.start()
     }
 }

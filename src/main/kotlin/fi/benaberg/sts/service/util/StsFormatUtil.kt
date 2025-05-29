@@ -1,5 +1,6 @@
 package fi.benaberg.sts.service.util
 
+import fi.benaberg.sts.service.LogRef
 import fi.benaberg.sts.service.def.StsFormatException
 import fi.benaberg.sts.service.model.TemperatureReading
 import java.nio.ByteBuffer
@@ -44,8 +45,8 @@ class StsFormatUtil {
          * Encodes a single temperature reading object according to the STS format and returns the encoded data.
          */
         @Throws(StsFormatException::class)
-        fun encode(temperatureReading: TemperatureReading): ByteArray {
-            LogUtil.write("Encoding temperature reading with timestamp: ${temperatureReading.temperature}, temperature: ${temperatureReading.temperature}")
+        fun encode(log: LogRef, temperatureReading: TemperatureReading): ByteArray {
+            log.write("Encoding temperature reading with timestamp: ${temperatureReading.temperature}, temperature: ${temperatureReading.temperature}")
             try {
                 // Check that temperature reading is valid
                 if (temperatureReading.temperature < -127 || temperatureReading.temperature > 128) {
@@ -61,7 +62,7 @@ class StsFormatUtil {
                 val buffer = ByteBuffer.allocate(STS_TIMESTAMP_LEN + STS_TEMPERATURE_LEN)
                 buffer.putLong(temperatureReading.timestamp)
                 buffer.put(temperatureReading.temperature.toByte())
-                LogUtil.write("Successfully encoded temperature reading!")
+                log.write("Successfully encoded temperature reading!")
                 return buffer.array()
             }
             catch (exception: Exception) {
@@ -73,8 +74,8 @@ class StsFormatUtil {
          *  Decodes an STS payload and returns a list containing the present temperature readings.
          */
         @Throws(StsFormatException::class)
-        fun decode(payload: ByteArray): List<TemperatureReading> {
-            LogUtil.write("Decoding temperature readings from payload with size: ${payload.size}")
+        fun decode(log: LogRef, payload: ByteArray): List<TemperatureReading> {
+            log.write("Decoding temperature readings from payload with size: ${payload.size}")
             try {
                 val readings = ArrayList<TemperatureReading>()
                 val buffer = ByteBuffer.wrap(payload)
@@ -100,7 +101,7 @@ class StsFormatUtil {
                     readings.add(TemperatureReading(temperature, timestamp))
                 }
 
-                LogUtil.write("Successfully decoded ${readings.size} temperature reading(s)!")
+                log.write("Successfully decoded ${readings.size} temperature reading(s)!")
                 return readings
             }
             catch (exception: Exception) {
