@@ -30,6 +30,9 @@ class HttpServletHandler(
         server.createContext(dashboardContext, DashboardRequestHandler(log))
         server.createContext("/css/style.css", CSSHandler())
         server.createContext("/js/script.js", JSHandler(wsPort))
+        server.createContext("/fonts/Cascadia.woff", FontHandler("Cascadia.woff"))
+        server.createContext("/fonts/Consolas.woff", FontHandler("Consolas.woff"))
+        server.createContext("/icons/favicon.ico", IconHandler("favicon.ico"))
         server.executor = null
     }
 
@@ -130,8 +133,8 @@ class HttpServletHandler(
         override fun handle(exchange: HttpExchange) {
             // Serve CSS
             val css = object {}.javaClass.getResource("/fi/benaberg/sts/service/css/style.css")!!.readBytes()
-            exchange.sendResponseHeaders(200, css.size.toLong())
             exchange.responseHeaders.add("Content-Type", "text/css")
+            exchange.sendResponseHeaders(200, css.size.toLong())
             exchange.responseBody.use { it.write(css) }
         }
     }
@@ -145,9 +148,31 @@ class HttpServletHandler(
 
             // Serve JS
             val bytes = js.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "text/javascript")
             exchange.sendResponseHeaders(200, bytes.size.toLong())
-            exchange.responseHeaders.add("Content-Type", "application/javascript")
             exchange.responseBody.use { it.write(bytes) }
+        }
+    }
+
+    private class FontHandler(private val fontName: String) : HttpHandler {
+
+        override fun handle(exchange: HttpExchange) {
+            // Serve font
+            val font = object {}.javaClass.getResource("/fi/benaberg/sts/service/fonts/$fontName")!!.readBytes()
+            exchange.responseHeaders.add("Content-Type", "font/woff")
+            exchange.sendResponseHeaders(200, font.size.toLong())
+            exchange.responseBody.use { it.write(font) }
+        }
+    }
+
+    private class IconHandler(private val iconName: String) : HttpHandler {
+
+        override fun handle(exchange: HttpExchange) {
+            // Serve icon
+            val icon = object {}.javaClass.getResource("/fi/benaberg/sts/service/icons/$iconName")!!.readBytes()
+            exchange.responseHeaders.add("Content-Type", "image/x-icon")
+            exchange.sendResponseHeaders(200, icon.size.toLong())
+            exchange.responseBody.use { it.write(icon) }
         }
     }
 }
