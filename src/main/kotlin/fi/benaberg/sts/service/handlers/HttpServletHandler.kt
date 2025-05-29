@@ -27,8 +27,9 @@ class HttpServletHandler(
 
     init {
         server.createContext(temperatureContext, TemperatureRequestHandler(log, storageHandler))
-        server.createContext(dashboardContext, DashboardRequestHandler(log, wsPort))
+        server.createContext(dashboardContext, DashboardRequestHandler(log))
         server.createContext("/css/style.css", CSSHandler())
+        server.createContext("/js/script.js", JSHandler(wsPort))
         server.executor = null
     }
 
@@ -105,19 +106,15 @@ class HttpServletHandler(
         }
     }
 
-    private class DashboardRequestHandler(private val log: LogRef, private val port: Int) : HttpHandler {
+    private class DashboardRequestHandler(private val log: LogRef) : HttpHandler {
 
         override fun handle(exchange: HttpExchange) {
             try {
-                // Get HTML
-                var html = object {}.javaClass.getResource("/fi/benaberg/sts/service/html/dashboard.html")!!.readText()
-                html = html.replace("{{WS_PORT}}", port.toString())
-
                 // Serve HTML
-                val bytes = html.toByteArray()
+                val html = object {}.javaClass.getResource("/fi/benaberg/sts/service/html/dashboard.html")!!.readBytes()
                 exchange.responseHeaders?.add("Content-Type", "text/html; charset=UTF-8")
-                exchange.sendResponseHeaders(200, bytes.size.toLong())
-                exchange.responseBody.use { it.write(bytes) }
+                exchange.sendResponseHeaders(200, html.size.toLong())
+                exchange.responseBody.use { it.write(html) }
             }
             catch (exception: Exception) {
                 log.write("Failed to serve HTML: ${exception.message}")
@@ -131,10 +128,26 @@ class HttpServletHandler(
     private class CSSHandler : HttpHandler {
 
         override fun handle(exchange: HttpExchange) {
+            // Serve CSS
             val css = object {}.javaClass.getResource("/fi/benaberg/sts/service/css/style.css")!!.readBytes()
             exchange.sendResponseHeaders(200, css.size.toLong())
             exchange.responseHeaders.add("Content-Type", "text/css")
             exchange.responseBody.use { it.write(css) }
+        }
+    }
+
+    private class JSHandler(private val port: Int) : HttpHandler {
+
+        override fun handle(exchange: HttpExchange) {
+            // Get script and set Websocket port
+            var js = object {}.javaClass.getResource("/fi/benaberg/sts/service/js/script.js")!!.readText()
+            js = js.replace("{{WS_PORT}}", port.toString())
+
+            // Serve JS
+            val bytes = js.toByteArray()
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseHeaders.add("Content-Type", "application/javascript")
+            exchange.responseBody.use { it.write(bytes) }
         }
     }
 }
