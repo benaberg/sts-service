@@ -42,6 +42,25 @@ html, body {
     text-align: left;
     background-color: #1e1e1e;
     border-radius: 8px;
+    scrollbar-width: thin;
+    scrollbar-color: #555 #1e1e1e;
+}
+
+#log::-webkit-scrollbar {
+    width: 8px;
+}
+
+#log::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+#log::-webkit-scrollbar-thumb {
+    background-color: #555;
+    border-radius: 4px;
+}
+
+#log::-webkit-scrollbar-thumb:hover {
+    background-color: #888;
 }
 
 .log-entry {
