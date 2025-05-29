@@ -45,7 +45,7 @@ class HttpServletHandler(
                 "GET" -> {
                     // Fetch temperature
                     try {
-                        log.write("Received temperature GET")
+                        log.write("Received temperature GET from ${exchange.remoteAddress}")
                         // Compose response
                         val jsonObject = JSONObject()
                         jsonObject.put(Constants.TEMPERATURE, storageHandler.getTemperatureReading().temperature)
@@ -76,7 +76,7 @@ class HttpServletHandler(
                 "PUT" -> {
                     // Update temperature
                     try {
-                        log.write("Received temperature PUT")
+                        log.write("Received temperature PUT from ${exchange.remoteAddress}")
 
                         // Read request
                         val jsonString = String(exchange.requestBody.readAllBytes(), StandardCharsets.UTF_8)
