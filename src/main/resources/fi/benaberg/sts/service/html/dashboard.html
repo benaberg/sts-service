@@ -8,8 +8,17 @@
     <body>
         <div id="container">
             <div id="temperature">Current Temperature: -</div>
-            <div id="lastUpdated">Last Updated: -</div>
-            <div id="log" class="log"></div>
+            <div id="last-updated">Last Updated: -</div>
+            <div id="tab-container" class="tab-container">
+                <div id="tab-buttons">
+                    <button id="logTab" class="tab-button active">Log</button>
+                    <button id="historyTab" class="tab-button">History</button>
+                </div>
+                <div id="tab-views">
+                    <div id="log" class="tab-view"></div>
+                    <div id="history" class="tab-view hidden"></div>
+                </div>
+            </div>
         </div>
         <script src="../js/script.js" ></script>
     </body>

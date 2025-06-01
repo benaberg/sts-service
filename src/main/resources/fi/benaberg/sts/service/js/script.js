@@ -4,8 +4,8 @@ socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
     if (data.temperature && data.timestamp) {
         document.getElementById("temperature").textContent = "Current Temperature: " + data.temperature + "°C";
-        document.getElementById("lastUpdated").textContent = "Last Updated: " + formatTimestamp(data.timestamp);
-        document.getElementById("lastUpdated").style.visibility = "visible";
+        document.getElementById("last-updated").textContent = "Last Updated: " + formatTimestamp(data.timestamp);
+        document.getElementById("last-updated").style.visibility = "visible";
     }
     if (data.log) {
         appendLogMessage(data.log);
@@ -14,8 +14,24 @@ socket.onmessage = (event) => {
 
 socket.onerror = e => {
     document.getElementById("temperature").textContent = "Connection error: " + e.message;
-    document.getElementById("lastUpdated").style.visibility = "hidden";
+    document.getElementById("last-updated").style.visibility = "hidden";
 };
+
+document.getElementById("logTab").addEventListener("click", () => {
+  document.getElementById("logTab").classList.add("active");
+  document.getElementById("historyTab").classList.remove("active");
+
+  document.getElementById("log").classList.remove("hidden");
+  document.getElementById("history").classList.add("hidden");
+});
+
+document.getElementById("historyTab").addEventListener("click", () => {
+  document.getElementById("historyTab").classList.add("active");
+  document.getElementById("logTab").classList.remove("active");
+
+  document.getElementById("history").classList.remove("hidden");
+  document.getElementById("log").classList.add("hidden");
+});
 
 function appendLogMessage(message) {
     const log = document.getElementById("log");
