@@ -1,12 +1,11 @@
 package fi.benaberg.sts.service.handlers
 
-import fi.benaberg.sts.service.def.Constants
 import fi.benaberg.sts.service.LogRef
+import fi.benaberg.sts.service.util.JSONUtil
 import kotlinx.coroutines.*
 import org.java_websocket.WebSocket
 import org.java_websocket.handshake.ClientHandshake
 import org.java_websocket.server.WebSocketServer
-import org.json.JSONObject
 import java.net.InetSocketAddress
 
 class WsServletHandler(
@@ -24,10 +23,7 @@ class WsServletHandler(
         scope.launch {
             while (true) {
                 // Create payload
-                val jsonReading = JSONObject()
-                val temperatureReading = storageHandler.getTemperatureReading()
-                jsonReading.put(Constants.TEMPERATURE, temperatureReading.temperature)
-                jsonReading.put(Constants.TIMESTAMP, temperatureReading.timestamp)
+                val jsonReading = JSONUtil.temperatureReadingToJSON(storageHandler.getCurrentTemperatureReading())
 
                 // Continuously update every second
                 broadcast(jsonReading.toString())

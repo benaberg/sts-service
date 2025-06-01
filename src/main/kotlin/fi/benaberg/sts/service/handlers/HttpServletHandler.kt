@@ -3,13 +3,16 @@ package fi.benaberg.sts.service.handlers
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpHandler
 import com.sun.net.httpserver.HttpServer
+import fi.benaberg.sts.service.LogRef
 import fi.benaberg.sts.service.def.Constants
 import fi.benaberg.sts.service.def.HttpResponse
-import fi.benaberg.sts.service.LogRef
+import fi.benaberg.sts.service.util.JSONUtil
+import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
 import java.net.InetSocketAddress
+import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
 /**
@@ -46,23 +49,22 @@ class HttpServletHandler(
         override fun handle(exchange: HttpExchange) {
             when (exchange.requestMethod) {
                 "GET" -> {
-                    // Fetch temperature
                     try {
-                        log.write("Received temperature GET from ${exchange.remoteAddress}")
-                        // Compose response
-                        val jsonObject = JSONObject()
-                        jsonObject.put(Constants.TEMPERATURE, storageHandler.getTemperatureReading().temperature)
-                        jsonObject.put(Constants.TIMESTAMP, storageHandler.getTemperatureReading().timestamp)
-
-                        // Send response headers
-                        val jsonString = jsonObject.toString()
-                        exchange.sendResponseHeaders(HttpResponse.OK, jsonString.length.toLong())
-
-                        // Write response
-                        val os = exchange.responseBody
-                        os.write(jsonString.toByteArray())
-                        os.close()
-                        log.write("Successfully served temperature!")
+                        val queryParams = getQueryParams(exchange)
+                        if (queryParams.isEmpty()) {
+                            // Serve current temperature
+                            handleGetCurrentTemperature(exchange)
+                        }
+                        else {
+                            // Serve temperature range
+                            val from = queryParams[Constants.FROM]
+                            val to = queryParams[Constants.TO]
+                            if (from == null || to == null) {
+                                handleGetCurrentTemperature(exchange)
+                                return
+                            }
+                            handleGetTemperatureRange(exchange, from, to)
+                        }
                     }
                     catch (exception: Exception) {
                         when (exception) {
@@ -77,20 +79,9 @@ class HttpServletHandler(
                     }
                 }
                 "PUT" -> {
-                    // Update temperature
                     try {
-                        log.write("Received temperature PUT from ${exchange.remoteAddress}")
-
-                        // Read request
-                        val jsonString = String(exchange.requestBody.readAllBytes(), StandardCharsets.UTF_8)
-                        val jsonObject = JSONObject(jsonString)
-
-                        // Store temperature
-                        storageHandler.storeData(jsonObject)
-
-                        // Send response headers
-                        exchange.sendResponseHeaders(HttpResponse.OK, -1)
-                        log.write("Successfully updated temperature!")
+                        // Update current temperature
+                        handlePutCurrentTemperature(exchange)
                     }
                     catch (exception: Exception) {
                         when (exception) {
@@ -106,6 +97,77 @@ class HttpServletHandler(
                     }
                 }
             }
+        }
+
+        fun getQueryParams(exchange: HttpExchange): Map<String, Long> {
+            val query = exchange.requestURI.rawQuery ?: return emptyMap()
+            return try {
+                query
+                    .split("&")
+                    .mapNotNull { param ->
+                        val parts = param.split("=")
+                        if (parts.size == 2) {
+                            val key = URLDecoder.decode(parts[0], StandardCharsets.UTF_8.name())
+                            val value = URLDecoder.decode(parts[1], StandardCharsets.UTF_8.name()).toLong()
+                            key to value
+                        } else null
+                    }.toMap()
+            }
+            catch (exception: NumberFormatException) {
+                emptyMap()
+            }
+        }
+
+        private fun handleGetCurrentTemperature(exchange: HttpExchange) {
+            log.write("Received GET current temperature from ${exchange.remoteAddress}")
+
+            // Compose reading JSON and send response headers
+            val jsonString = JSONUtil.temperatureReadingToJSON(storageHandler.getCurrentTemperatureReading()).toString()
+            exchange.sendResponseHeaders(HttpResponse.OK, jsonString.length.toLong())
+
+            // Write response
+            val os = exchange.responseBody
+            os.write(jsonString.toByteArray())
+            os.close()
+            log.write("Successfully served current temperature!")
+        }
+
+        private fun handleGetTemperatureRange(exchange: HttpExchange, from: Long, to: Long) {
+            log.write("Received GET temperature range [$from - $to] from ${exchange.remoteAddress}")
+
+            // Get readings in range
+            val jsonArray = JSONArray()
+            val storedReadings = storageHandler.getStoredTemperatureReadings()
+            storedReadings.forEach { reading ->
+                if (reading.timestamp in from..to) {
+                    jsonArray.put(JSONUtil.temperatureReadingToJSON(reading))
+                }
+            }
+
+            // Send response headers
+            val jsonString = jsonArray.toString()
+            exchange.sendResponseHeaders(HttpResponse.OK, jsonString.length.toLong())
+
+            // Write response
+            val os = exchange.responseBody
+            os.write(jsonString.toByteArray())
+            os.close()
+            log.write("Successfully served ${jsonArray.length()} temperature readings in range!")
+        }
+
+        private fun handlePutCurrentTemperature(exchange: HttpExchange) {
+            log.write("Received PUT temperature from ${exchange.remoteAddress}")
+
+            // Read request
+            val jsonString = String(exchange.requestBody.readAllBytes(), StandardCharsets.UTF_8)
+            val jsonObject = JSONObject(jsonString)
+
+            // Store temperature
+            storageHandler.storeData(jsonObject)
+
+            // Send response headers
+            exchange.sendResponseHeaders(HttpResponse.OK, -1)
+            log.write("Successfully updated temperature!")
         }
     }
 

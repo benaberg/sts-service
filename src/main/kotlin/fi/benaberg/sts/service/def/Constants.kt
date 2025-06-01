@@ -9,5 +9,7 @@ class Constants {
         const val TEMPERATURE: String = "temperature"
         const val TIMESTAMP: String = "timestamp"
         const val LOG: String = "log"
+        const val FROM: String = "from"
+        const val TO: String = "to"
     }
 }

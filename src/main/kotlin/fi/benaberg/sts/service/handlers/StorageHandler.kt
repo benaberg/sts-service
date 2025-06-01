@@ -21,7 +21,7 @@ import kotlin.io.path.readBytes
  */
 class StorageHandler(private val log: LogRef, private val applicationDataDirPath: Path, private val ltsDataDirPath: Path) {
 
-    private val temperatureReading = TemperatureReading(-1, 0)
+    private val currentTemperatureReading = TemperatureReading(-1, 0)
     private var storedReadings = 0
 
     companion object {
@@ -34,8 +34,8 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
         try {
             val storedReading = readLastReceived()
             if (storedReading != null) {
-                temperatureReading.temperature = storedReading.getInt(Constants.TEMPERATURE)
-                temperatureReading.timestamp = storedReading.getLong(Constants.TIMESTAMP)
+                currentTemperatureReading.temperature = storedReading.getInt(Constants.TEMPERATURE)
+                currentTemperatureReading.timestamp = storedReading.getLong(Constants.TIMESTAMP)
             }
             storedReadings = readStoredReadings().size
             log.write("Read $storedReadings currently stored readings from disk.")
@@ -53,8 +53,12 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
         }
     }
 
-    fun getTemperatureReading() : TemperatureReading {
-        return temperatureReading
+    fun getCurrentTemperatureReading() : TemperatureReading {
+        return currentTemperatureReading
+    }
+
+    fun getStoredTemperatureReadings() : List<TemperatureReading> {
+        return readStoredReadings()
     }
 
     @Throws(IOException::class, JSONException::class)
@@ -64,8 +68,8 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
         val timestamp = Instant.now().toEpochMilli()
         val temperature = jsonObject.getInt(Constants.TEMPERATURE)
 
-        temperatureReading.timestamp = timestamp
-        temperatureReading.temperature = temperature
+        currentTemperatureReading.timestamp = timestamp
+        currentTemperatureReading.temperature = temperature
 
         // Create JSON object to store on disk
         val storeJson = JSONObject()
@@ -93,7 +97,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
         if (storedReadingsFile.length() == 0L) {
             storedReadingsFile.writeBytes(StsFormatUtil.encodeHeader())
         }
-        storedReadingsFile.appendBytes(StsFormatUtil.encode(log, temperatureReading))
+        storedReadingsFile.appendBytes(StsFormatUtil.encode(log, currentTemperatureReading))
         log.write("Successfully stored temperature data: $storeJson ")
         log.write("Total stored readings: ${++storedReadings}")
     }
