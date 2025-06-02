@@ -1,6 +1,7 @@
 package fi.benaberg.sts.service.handlers
 
 import fi.benaberg.sts.service.LogRef
+import fi.benaberg.sts.service.model.TemperatureReading
 import fi.benaberg.sts.service.util.JSONUtil
 import kotlinx.coroutines.*
 import org.java_websocket.WebSocket
@@ -16,6 +17,10 @@ class WsServletHandler(
     : WebSocketServer(InetSocketAddress(port)) {
 
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
+
+    init {
+        storageHandler.addListener(this::broadcastTemperature)
+    }
 
     override fun onStart() {
         log.write("Setting up WS servlet on port: $port")
@@ -51,5 +56,9 @@ class WsServletHandler(
 
     override fun onError(socket: WebSocket, exception: Exception?) {
         log.write("WS error: " + exception?.message + " from ${socket.remoteSocketAddress}")
+    }
+
+    fun broadcastTemperature(temperatureReading: TemperatureReading) {
+        sessions.forEach { it.send(JSONUtil.temperatureReadingToJSON(temperatureReading).toString()) }
     }
 }

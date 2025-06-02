@@ -4,6 +4,7 @@ import fi.benaberg.sts.service.def.Constants
 import fi.benaberg.sts.service.def.StsFormatException
 import fi.benaberg.sts.service.model.TemperatureReading
 import fi.benaberg.sts.service.LogRef
+import fi.benaberg.sts.service.def.TemperatureListener
 import fi.benaberg.sts.service.util.StsFormatUtil
 import org.json.JSONException
 import org.json.JSONObject
@@ -22,6 +23,7 @@ import kotlin.io.path.readBytes
 class StorageHandler(private val log: LogRef, private val applicationDataDirPath: Path, private val ltsDataDirPath: Path) {
 
     private val currentTemperatureReading = TemperatureReading(-1, 0)
+    private val temperatureListeners = mutableListOf<TemperatureListener>()
     private var storedReadings = 0
 
     companion object {
@@ -61,6 +63,15 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
         return readStoredReadings()
     }
 
+
+    fun addListener(listener: TemperatureListener) {
+        temperatureListeners.add(listener)
+    }
+
+    fun removeListener(listener: TemperatureListener) {
+        temperatureListeners.remove(listener)
+    }
+
     @Throws(IOException::class, JSONException::class)
     fun storeData(jsonObject: JSONObject) {
         log.write("Storing received temperature...")
@@ -98,6 +109,10 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
             storedReadingsFile.writeBytes(StsFormatUtil.encodeHeader())
         }
         storedReadingsFile.appendBytes(StsFormatUtil.encode(log, currentTemperatureReading))
+
+        // Notify listeners
+        temperatureListeners.forEach{ it.onReadingAdded(currentTemperatureReading) }
+
         log.write("Successfully stored temperature data: $storeJson ")
         log.write("Total stored readings: ${++storedReadings}")
     }

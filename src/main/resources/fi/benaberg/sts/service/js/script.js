@@ -1,6 +1,7 @@
 const socket = new WebSocket("ws://" + location.hostname + ":{{WS_PORT}}");
 var chart = null;
-var data = null;
+var temperatureData = null;
+var lastUpdated = 0;
 
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -8,6 +9,16 @@ socket.onmessage = (event) => {
         document.getElementById("temperature").textContent = "Current Temperature: " + data.temperature + "°C";
         document.getElementById("last-updated").textContent = "Last Updated: " + formatTimestamp(data.timestamp);
         document.getElementById("last-updated").style.visibility = "visible";
+
+        // Add reading to chart data
+        if (temperatureData != null && data.timestamp != lastUpdated) {
+            addTemperatureReading(data);
+            updateChartTimeRange();
+        }
+
+        if (data.timestamp != lastUpdated) {
+            lastUpdated = data.timestamp;
+        }
     }
     if (data.log) {
         appendLogMessage(data.log);
@@ -42,15 +53,15 @@ document.getElementById("historyTab").addEventListener("click", () => {
 
 const select = document.getElementById('timeRangeSelect');
 select.addEventListener('change', () => {
-    if (chart != null && data != null) {
-        const hours = parseInt(select.value, 10);
-        updateChartTimeRange(hours);
+    if (chart != null && temperatureData != null) {
+        updateChartTimeRange();
     }
 });
 
-function updateChartTimeRange(hours) {
+function updateChartTimeRange() {
+    const hours = parseInt(select.value);
     const now = Date.now();
-    const filteredData = data.filter(d => d.timestamp >= now - hours * 3600 * 1000);
+    const filteredData = temperatureData.filter(d => d.timestamp >= now - hours * 3600 * 1000);
 
     chart.data.labels = filteredData.map(d => new Date(d.timestamp));
     chart.data.datasets[0].data = filteredData.map(d => d.temperature);
@@ -64,13 +75,13 @@ function updateChartTimeRange(hours) {
 async function loadHistoryData() {
     const now = Date.now();
     const response = await fetch("/temperature?from=0&to=" + now);
-    data = await response.json();
+    temperatureData = await response.json();
 
     // Parse data
-    chartData = data.map(entry => ({
-            x: new Date(entry.timestamp),
-            y: entry.temperature
-        }));
+    chartData = temperatureData.map(entry => ({
+        x: new Date(entry.timestamp),
+        y: entry.temperature
+    }));
 
     const ctx = document.getElementById('historyChart').getContext('2d');
 
@@ -120,7 +131,8 @@ async function loadHistoryData() {
                     },
                 },
                 y: {
-                    beginAtZero: false,
+                    min: 20,
+                    max: 120,
                     title: {
                         display: true,
                         text: 'Temperature (°C)'
@@ -132,7 +144,12 @@ async function loadHistoryData() {
             }
         }
     });
-    updateChartTimeRange(1);
+    updateChartTimeRange();
+}
+
+function addTemperatureReading(reading) {
+    temperatureData.push(reading);
+    updateChartTimeRange();
 }
 
 function appendLogMessage(message) {
