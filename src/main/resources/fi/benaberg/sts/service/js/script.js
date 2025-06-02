@@ -1,4 +1,6 @@
 const socket = new WebSocket("ws://" + location.hostname + ":{{WS_PORT}}");
+var chart = null;
+var data = null;
 
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
@@ -18,20 +20,120 @@ socket.onerror = e => {
 };
 
 document.getElementById("logTab").addEventListener("click", () => {
-  document.getElementById("logTab").classList.add("active");
-  document.getElementById("historyTab").classList.remove("active");
-
-  document.getElementById("log").classList.remove("hidden");
-  document.getElementById("history").classList.add("hidden");
+    document.getElementById("logTab").classList.add("active");
+    document.getElementById("historyTab").classList.remove("active");
+    document.getElementById("timeRangeSelect").classList.add("hidden");
+    document.getElementById("log").classList.remove("hidden");
+    document.getElementById("history").classList.add("hidden");
 });
 
 document.getElementById("historyTab").addEventListener("click", () => {
-  document.getElementById("historyTab").classList.add("active");
-  document.getElementById("logTab").classList.remove("active");
+    document.getElementById("historyTab").classList.add("active");
+    document.getElementById("timeRangeSelect").classList.remove("hidden");
+    document.getElementById("logTab").classList.remove("active");
+        if (!window.historyChartInitialized) {
+            loadHistoryData();
+            window.historyChartInitialized = true;
+        }
 
-  document.getElementById("history").classList.remove("hidden");
-  document.getElementById("log").classList.add("hidden");
+    document.getElementById("history").classList.remove("hidden");
+    document.getElementById("log").classList.add("hidden");
 });
+
+const select = document.getElementById('timeRangeSelect');
+select.addEventListener('change', () => {
+    if (chart != null && data != null) {
+        const hours = parseInt(select.value, 10);
+        updateChartTimeRange(hours);
+    }
+});
+
+function updateChartTimeRange(hours) {
+    const now = Date.now();
+    const filteredData = data.filter(d => d.timestamp >= now - hours * 3600 * 1000);
+
+    chart.data.labels = filteredData.map(d => new Date(d.timestamp));
+    chart.data.datasets[0].data = filteredData.map(d => d.temperature);
+
+    chart.options.scales.x.min = now - hours * 3600 * 1000;
+    chart.options.scales.x.max = now;
+
+    chart.update();
+}
+
+async function loadHistoryData() {
+    const now = Date.now();
+    const response = await fetch("/temperature?from=0&to=" + now);
+    data = await response.json();
+
+    // Parse data
+    chartData = data.map(entry => ({
+            x: new Date(entry.timestamp),
+            y: entry.temperature
+        }));
+
+    const ctx = document.getElementById('historyChart').getContext('2d');
+
+    chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [{
+                label: 'Temperature',
+                data: chartData,
+                borderColor: 'rgb(75, 192, 192)',
+                tension: 0.1,
+                spanGaps: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    align: 'end',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 10
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'minute', // or 'hour', 'day'
+                        tooltipFormat: 'HH:mm:ss dd.MM.yyyy',
+                        displayFormats: {
+                            minute: 'HH:mm',
+                            hour: 'HH:mm',
+                            day: 'dd.MM'
+                        }
+                    },
+                    ticks: {
+                        autoSkip: true,
+                        maxTicksLimit: 10
+                    },
+                    grid: {
+                        lineWidth: 2
+                    },
+                },
+                y: {
+                    beginAtZero: false,
+                    title: {
+                        display: true,
+                        text: 'Temperature (°C)'
+                    },
+                    grid: {
+                        lineWidth: 2
+                    }
+                }
+            }
+        }
+    });
+    updateChartTimeRange(1);
+}
 
 function appendLogMessage(message) {
     const log = document.getElementById("log");

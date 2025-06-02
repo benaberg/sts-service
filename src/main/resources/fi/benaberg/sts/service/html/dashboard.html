@@ -4,6 +4,9 @@
         <title>STS Dashboard</title>
         <link rel="stylesheet" href="../css/style.css">
         <link rel="shortcut icon" href="../icons/favicon.ico" type="image/x-icon">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/luxon@3/build/global/luxon.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1"></script>
     </head>
     <body>
         <div id="container">
@@ -13,13 +16,22 @@
                 <div id="tab-buttons">
                     <button id="logTab" class="tab-button active">Log</button>
                     <button id="historyTab" class="tab-button">History</button>
+                    <select id="timeRangeSelect" class="timeRangeSelect hidden">
+                        <option value="1">Past 1 Hour</option>
+                        <option value="2">Past 2 Hours</option>
+                        <option value="6">Past 6 Hours</option>
+                        <option value="12">Past 12 Hours</option>
+                        <option value="24">Past 24 Hours</option>
+                    </select>
                 </div>
                 <div id="tab-views">
                     <div id="log" class="tab-view"></div>
-                    <div id="history" class="tab-view hidden"></div>
+                    <div id="history" class="tab-view hidden">
+                        <canvas id="historyChart"></canvas>
+                    </div>
                 </div>
             </div>
+            <script src="../js/script.js" ></script>
         </div>
-        <script src="../js/script.js" ></script>
     </body>
 </html>
