@@ -26,7 +26,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
 
     private val currentTemperatureReadings = mutableMapOf<Int, TemperatureReading>()
     private val temperatureListeners = mutableListOf<TemperatureListener>()
-    private val sensorIds = mutableListOf<Int>()
+    private val sensorIds = mutableMapOf<Int, String>()
     private var storedReadings = 0
 
     companion object {
@@ -49,14 +49,15 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
             readSensorIds()
 
             // Read last stored values
-            sensorIds.forEach { id ->
+            sensorIds.forEach { (id, name) ->
                 // Read last received for sensor ID
-                val storedReading = readLastReceived(id)
+                val storedReading = readLastReceived(id, name)
                 if (storedReading != null) {
-                    val temperatureReading = TemperatureReading(-1, -1, 0)
+                    val temperatureReading = TemperatureReading(-1, "", -1, 0)
 
                     if (id != -1) {
                         temperatureReading.sensorId = storedReading.getInt(Constants.SENSOR_ID)
+                        temperatureReading.sensorName = name
                     }
                     temperatureReading.temperature = storedReading.getInt(Constants.TEMPERATURE)
                     temperatureReading.timestamp = storedReading.getLong(Constants.TIMESTAMP)
@@ -64,7 +65,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
                     currentTemperatureReadings[id] = temperatureReading
                 }
             }
-            storedReadings += readStoredReadings().size
+            storedReadings += readStoredReadings(sensorIds).size
             log.write("Read $storedReadings currently stored readings from disk.")
         }
         catch (exception: JSONException) {
@@ -81,7 +82,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
     }
 
     fun getStoredTemperatureReadings(sensorId: Int) : Collection<TemperatureReading> {
-        return readStoredReadings().filter { it.sensorId == sensorId }
+        return readStoredReadings(sensorIds).filter { it.sensorId == sensorId }
     }
 
     fun addListener(listener: TemperatureListener) {
@@ -96,10 +97,11 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
     fun storeData(sensorId: Int, jsonObject: JSONObject) {
         log.write("Storing received temperature...")
 
+        val sensorName = jsonObject.getString(Constants.SENSOR_NAME)
         val temperature = jsonObject.getInt(Constants.TEMPERATURE)
         val timestamp = Instant.now().toEpochMilli()
 
-        val receivedTemperatureReading = TemperatureReading(sensorId, temperature, timestamp)
+        val receivedTemperatureReading = TemperatureReading(sensorId, sensorName, temperature, timestamp)
         currentTemperatureReadings[sensorId] = receivedTemperatureReading
 
         // Create JSON object to store on disk
@@ -114,7 +116,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
                 applicationDataDirPath.toFile().resolve(LAST_READING_FILE)
             }
             else {
-                applicationDataDirPath.toFile().resolve("${sensorId}_$LAST_READING_FILE")
+                applicationDataDirPath.toFile().resolve("${sensorId}_${sensorName}_$LAST_READING_FILE")
             }
 
         val storedReadingsFile = ltsDataDirPath.toFile().resolve("${StsFormatUtil.CURRENT_VERSION}_$STORED_READINGS_FILE")
@@ -146,14 +148,14 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
     }
 
     @Throws(JSONException::class)
-    private fun readLastReceived(sensorId: Int): JSONObject? {
+    private fun readLastReceived(sensorId: Int, sensorName: String): JSONObject? {
         log.write("Reading stored temperature for sensor with ID: $sensorId")
         val filePath: Path? =
             if (sensorId == -1) {
                 applicationDataDirPath.resolve(LAST_READING_FILE)
             }
             else {
-                applicationDataDirPath.resolve("${sensorId}_$LAST_READING_FILE")
+                applicationDataDirPath.resolve("${sensorId}_${sensorName}_$LAST_READING_FILE")
             }
 
         // Return null if no temperature reading exists
@@ -182,11 +184,11 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
                 val parts = filename.split("_")
                 if (parts.size == 2) {
                     // No sensor ID prefix
-                    sensorIds.add(-1)
+                    sensorIds[-1] = ""
                 }
-                else if (parts.size == 3) {
+                else if (parts.size == 4) {
                     // Attempt to parse sensor ID
-                    sensorIds.add(parts[0].toInt())
+                    sensorIds[parts[0].toInt()] = parts[1]
                 }
             }
             catch (exception: NumberFormatException) {
@@ -196,7 +198,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
         log.write("Successfully read ${sensorIds.size} sensor IDs from disk!")
     }
 
-    private fun readStoredReadings(): List<TemperatureReading> {
+    private fun readStoredReadings(sensorIds: Map<Int, String>): List<TemperatureReading> {
         log.write("Reading stored readings from disk...")
         val paths = ltsDataDirPath.toFile().listFiles()
             ?.filter { it.path.contains(STORED_READINGS_FILE) }
@@ -205,7 +207,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
         val readings = mutableListOf<TemperatureReading>()
         paths.forEach { path ->
             try {
-                readings.addAll(StsFormatUtil.decode(log, path.readBytes()))
+                readings.addAll(StsFormatUtil.decode(log, sensorIds, path.readBytes()))
             }
             catch (exception: NumberFormatException) {
                 log.write("Failed to parse STS format version from path: ${path.pathString}, reason: ${exception.message}")

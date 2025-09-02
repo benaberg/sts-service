@@ -8,11 +8,10 @@ class JSONUtil {
 
     companion object {
 
-        fun temperatureReadingToJSON(reading: TemperatureReading, includeSensorId: Boolean): JSONObject {
+        fun temperatureReadingToJSON(reading: TemperatureReading): JSONObject {
             val jsonObject = JSONObject()
-            if (includeSensorId) {
-                jsonObject.put(Constants.SENSOR_ID, reading.sensorId)
-            }
+            jsonObject.put(Constants.SENSOR_ID, reading.sensorId)
+            jsonObject.put(Constants.SENSOR_NAME, reading.sensorName)
             jsonObject.put(Constants.TEMPERATURE, reading.temperature)
             jsonObject.put(Constants.TIMESTAMP, reading.timestamp)
             return jsonObject

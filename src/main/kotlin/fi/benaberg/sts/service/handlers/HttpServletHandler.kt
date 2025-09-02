@@ -131,7 +131,7 @@ class HttpServletHandler(
             // Compose reading JSON and send response headers
             val reading = storageHandler.getCurrentTemperatureReading(sensorId)
             if (reading != null) {
-                val jsonString = JSONUtil.temperatureReadingToJSON(reading, false).toString()
+                val jsonString = JSONUtil.temperatureReadingToJSON(reading).toString()
                 exchange.sendResponseHeaders(HttpResponse.OK, jsonString.length.toLong())
 
                 // Write response
@@ -161,7 +161,7 @@ class HttpServletHandler(
             val storedReadings = storageHandler.getStoredTemperatureReadings(sensorId)
             storedReadings.forEach { reading ->
                 if (reading.timestamp in from..to) {
-                    jsonArray.put(JSONUtil.temperatureReadingToJSON(reading, false))
+                    jsonArray.put(JSONUtil.temperatureReadingToJSON(reading))
                 }
             }
 

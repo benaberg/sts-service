@@ -31,7 +31,7 @@ class WsServletHandler(
                 storageHandler.getSensorIds().forEach { sensorId ->
                     val reading = storageHandler.getCurrentTemperatureReading(sensorId)
                     if (reading != null) {
-                        val jsonReading = JSONUtil.temperatureReadingToJSON(reading, true)
+                        val jsonReading = JSONUtil.temperatureReadingToJSON(reading)
                         broadcast(jsonReading.toString())
                     }
                 }
@@ -63,6 +63,6 @@ class WsServletHandler(
     }
 
     fun broadcastTemperature(temperatureReading: TemperatureReading) {
-        sessions.forEach { it.send(JSONUtil.temperatureReadingToJSON(temperatureReading, true).toString()) }
+        sessions.forEach { it.send(JSONUtil.temperatureReadingToJSON(temperatureReading).toString()) }
     }
 }

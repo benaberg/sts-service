@@ -81,7 +81,7 @@ class StsFormatUtil {
          *  Decodes an STS payload and returns a list containing the present temperature readings.
          */
         @Throws(StsFormatException::class)
-        fun decode(log: LogRef, payload: ByteArray): List<TemperatureReading> {
+        fun decode(log: LogRef, sensorIds: Map<Int, String>, payload: ByteArray): List<TemperatureReading> {
             log.write("Decoding temperature readings from payload with size: ${payload.size}")
             try {
                 val readings = ArrayList<TemperatureReading>()
@@ -102,7 +102,7 @@ class StsFormatUtil {
                         while (buffer.hasRemaining()) {
                             val timestamp = buffer.getLong()
                             val temperature = buffer.get().toInt()
-                            readings.add(TemperatureReading(-1, temperature, timestamp))
+                            readings.add(TemperatureReading(-1, "", temperature, timestamp))
                         }
 
                         log.write("Successfully decoded ${readings.size} temperature reading(s) from file (STS format v1)!")
@@ -111,10 +111,10 @@ class StsFormatUtil {
                     STS_VERSION_2 -> {
                         // Extract temperature readings
                         while (buffer.hasRemaining()) {
-                            val sensorId = buffer.getShort()
+                            val sensorId = buffer.getShort().toInt()
                             val timestamp = buffer.getLong()
                             val temperature = buffer.get().toInt()
-                            readings.add(TemperatureReading(sensorId.toInt(), temperature, timestamp))
+                            readings.add(TemperatureReading(sensorId, sensorIds[sensorId].orEmpty(), temperature, timestamp))
                         }
 
                         log.write("Successfully decoded ${readings.size} temperature reading(s) from file (STS format v2)!")
