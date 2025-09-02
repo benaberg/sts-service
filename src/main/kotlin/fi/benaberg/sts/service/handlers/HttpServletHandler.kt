@@ -119,28 +119,49 @@ class HttpServletHandler(
         }
 
         private fun handleGetCurrentTemperature(exchange: HttpExchange) {
-            log.write("Received GET current temperature from ${exchange.remoteAddress}")
+            log.write("Received GET current temperature from: ${exchange.remoteAddress} on path: ${exchange.requestURI}")
+
+            // Extract and validate sensor ID
+            val sensorId = getSensorId(exchange)
+            if (sensorId == null) {
+                exchange.sendResponseHeaders(HttpResponse.BAD_REQUEST, -1)
+                return
+            }
 
             // Compose reading JSON and send response headers
-            val jsonString = JSONUtil.temperatureReadingToJSON(storageHandler.getCurrentTemperatureReading()).toString()
-            exchange.sendResponseHeaders(HttpResponse.OK, jsonString.length.toLong())
+            val reading = storageHandler.getCurrentTemperatureReading(sensorId)
+            if (reading != null) {
+                val jsonString = JSONUtil.temperatureReadingToJSON(reading, false).toString()
+                exchange.sendResponseHeaders(HttpResponse.OK, jsonString.length.toLong())
 
-            // Write response
-            val os = exchange.responseBody
-            os.write(jsonString.toByteArray())
-            os.close()
-            log.write("Successfully served current temperature!")
+                // Write response
+                val os = exchange.responseBody
+                os.write(jsonString.toByteArray())
+                os.close()
+                log.write("Successfully served current temperature!")
+            }
+            else {
+                exchange.sendResponseHeaders(HttpResponse.NOT_FOUND, -1)
+                log.write("No temperature data found for sensor ID: $sensorId")
+            }
         }
 
         private fun handleGetTemperatureRange(exchange: HttpExchange, from: Long, to: Long) {
-            log.write("Received GET temperature range [$from - $to] from ${exchange.remoteAddress}")
+            log.write("Received GET temperature range [$from - $to] from: ${exchange.remoteAddress} on path: ${exchange.requestURI}")
+
+            // Extract and validate sensor ID
+            val sensorId = getSensorId(exchange)
+            if (sensorId == null) {
+                exchange.sendResponseHeaders(HttpResponse.BAD_REQUEST, -1)
+                return
+            }
 
             // Get readings in range
             val jsonArray = JSONArray()
-            val storedReadings = storageHandler.getStoredTemperatureReadings()
+            val storedReadings = storageHandler.getStoredTemperatureReadings(sensorId)
             storedReadings.forEach { reading ->
                 if (reading.timestamp in from..to) {
-                    jsonArray.put(JSONUtil.temperatureReadingToJSON(reading))
+                    jsonArray.put(JSONUtil.temperatureReadingToJSON(reading, false))
                 }
             }
 
@@ -158,16 +179,31 @@ class HttpServletHandler(
         private fun handlePutCurrentTemperature(exchange: HttpExchange) {
             log.write("Received PUT temperature from ${exchange.remoteAddress}")
 
+            // Extract and validate sensor ID
+            val sensorId = getSensorId(exchange)
+            if (sensorId == null) {
+                exchange.sendResponseHeaders(HttpResponse.BAD_REQUEST, -1)
+                return
+            }
+
             // Read request
             val jsonString = String(exchange.requestBody.readAllBytes(), StandardCharsets.UTF_8)
             val jsonObject = JSONObject(jsonString)
 
             // Store temperature
-            storageHandler.storeData(jsonObject)
+            storageHandler.storeData(sensorId, jsonObject)
 
             // Send response headers
             exchange.sendResponseHeaders(HttpResponse.OK, -1)
             log.write("Successfully updated temperature!")
+        }
+
+        private fun getSensorId(exchange: HttpExchange) : Int? {
+            return exchange.requestURI.path
+                .removePrefix("/")
+                .split("/")
+                .getOrNull(1)
+                ?.toIntOrNull()
         }
     }
 

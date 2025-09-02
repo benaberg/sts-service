@@ -28,10 +28,14 @@ class WsServletHandler(
         scope.launch {
             while (true) {
                 // Create payload
-                val jsonReading = JSONUtil.temperatureReadingToJSON(storageHandler.getCurrentTemperatureReading())
-
+                storageHandler.getSensorIds().forEach { sensorId ->
+                    val reading = storageHandler.getCurrentTemperatureReading(sensorId)
+                    if (reading != null) {
+                        val jsonReading = JSONUtil.temperatureReadingToJSON(reading, true)
+                        broadcast(jsonReading.toString())
+                    }
+                }
                 // Continuously update every second
-                broadcast(jsonReading.toString())
                 delay(1000)
             }
         }
@@ -59,6 +63,6 @@ class WsServletHandler(
     }
 
     fun broadcastTemperature(temperatureReading: TemperatureReading) {
-        sessions.forEach { it.send(JSONUtil.temperatureReadingToJSON(temperatureReading).toString()) }
+        sessions.forEach { it.send(JSONUtil.temperatureReadingToJSON(temperatureReading, true).toString()) }
     }
 }

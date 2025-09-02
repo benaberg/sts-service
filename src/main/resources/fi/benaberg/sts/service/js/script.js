@@ -2,9 +2,25 @@ const socket = new WebSocket("ws://" + location.hostname + ":{{WS_PORT}}");
 var chart = null;
 var temperatureData = null;
 var lastUpdated = 0;
+var currentSensor = null;
+const sensors = new Set();
+
+updateSensorList(null);
+updateHistoryTabVisibility();
 
 socket.onmessage = (event) => {
     const data = JSON.parse(event.data);
+    if (data.log) {
+        appendLogMessage(data.log);
+        return;
+    }
+    if (data.sensorId && !sensors.has(data.sensorId)) {
+        sensors.add(data.sensorId);
+        updateSensorList(data.sensorId);
+    }
+    if (!currentSensor || data.sensorId != currentSensor) {
+        return;
+    }
     if (data.temperature && data.timestamp) {
         document.getElementById("temperature").textContent = "Current Temperature: " + data.temperature + "°C";
         document.getElementById("last-updated").textContent = "Last Updated: " + formatTimestamp(data.timestamp);
@@ -19,9 +35,6 @@ socket.onmessage = (event) => {
         if (data.timestamp != lastUpdated) {
             lastUpdated = data.timestamp;
         }
-    }
-    if (data.log) {
-        appendLogMessage(data.log);
     }
 };
 
@@ -38,28 +51,34 @@ document.getElementById("logTab").addEventListener("click", () => {
     document.getElementById("history").classList.add("hidden");
 });
 
+document.getElementById("sensorSelect").addEventListener("click", (event) => {
+    // Ignore select-box clicks
+    if (event.target.type == "select-one") {
+        return;
+    }
+    currentSensor = event.target.value;
+    updateSensorList(currentSensor);
+    updateHistoryTabVisibility();
+    loadHistoryData();
+});
+
 document.getElementById("historyTab").addEventListener("click", () => {
     document.getElementById("historyTab").classList.add("active");
     document.getElementById("timeRangeSelect").classList.remove("hidden");
     document.getElementById("logTab").classList.remove("active");
-        if (!window.historyChartInitialized) {
-            loadHistoryData();
-            window.historyChartInitialized = true;
-        }
-
     document.getElementById("history").classList.remove("hidden");
     document.getElementById("log").classList.add("hidden");
 });
 
-const select = document.getElementById('timeRangeSelect');
-select.addEventListener('change', () => {
+const timeRangeSelect = document.getElementById('timeRangeSelect');
+timeRangeSelect.addEventListener('change', () => {
     if (chart != null && temperatureData != null) {
         updateChartTimeRange();
     }
 });
 
 function updateChartTimeRange() {
-    const hours = parseInt(select.value);
+    const hours = parseInt(timeRangeSelect.value);
     const now = Date.now();
     const filteredData = temperatureData.filter(d => d.timestamp >= now - hours * 3600 * 1000);
 
@@ -73,8 +92,17 @@ function updateChartTimeRange() {
 }
 
 async function loadHistoryData() {
+    if (!currentSensor) {
+        return;
+    }
+
+    // Destroy chart if initialized
+    if (chart) {
+        chart.destroy()
+    }
+
     const now = Date.now();
-    const response = await fetch("/temperature?from=0&to=" + now);
+    const response = await fetch("/temperature/" + currentSensor + "/?from=0&to=" + now);
     temperatureData = await response.json();
 
     // Parse data
@@ -185,4 +213,50 @@ function formatTimestamp(timestampMillis) {
     const mm = pad(date.getMonth() + 1);
     const yyyy = date.getFullYear();
     return `${hh}:${MM}:${ss} ${dd}.${mm}.${yyyy}`;
+}
+
+// Hide history tab if no sensor is selected
+function updateHistoryTabVisibility() {
+    const historyTabButton = document.getElementById("historyTab");
+    historyTab.disabled = !currentSensor;
+}
+
+function updateSensorList(sensorId) {
+    var select = document.getElementById("sensorSelect");
+
+    // If none selected, append placeholder
+    if (!currentSensor) {
+        // Clear current list, keep placeholder
+        select.innerHTML = '<option value="">-- Select a sensor --</option>';
+
+        // Add sensors dynamically
+        sensors.forEach(sensorId => {
+            const option = document.createElement("option");
+            option.value = sensorId;
+            option.textContent = sensorId;
+            select.appendChild(option);
+        });
+    }
+    // Add missing options
+    else {
+        // Remove placeholder
+        const placeholder = sensorSelect.querySelector('option[value=""]');
+        if (placeholder) {
+            placeholder.remove();
+        }
+
+        let exists = false;
+        for (let i = 0; i < select.options.length; i++) {
+            if (select.options[i].value === sensorId) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            const option = document.createElement("option");
+            option.value = sensorId;
+            option.textContent = sensorId;
+            select.appendChild(option);
+        }
+    }
 }

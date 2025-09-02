@@ -6,6 +6,7 @@ package fi.benaberg.sts.service.def
 class Constants {
 
     companion object {
+        const val SENSOR_ID: String = "sensorId"
         const val TEMPERATURE: String = "temperature"
         const val TIMESTAMP: String = "timestamp"
         const val LOG: String = "log"
