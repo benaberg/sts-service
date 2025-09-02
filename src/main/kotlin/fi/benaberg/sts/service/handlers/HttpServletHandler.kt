@@ -24,6 +24,7 @@ class HttpServletHandler(
     wsPort: Int,
     temperatureContext: String,
     dashboardContext: String,
+    sensorContext: String,
     storageHandler: StorageHandler) {
 
     private val server: HttpServer by lazy { HttpServer.create(InetSocketAddress(httpPort), 0) }
@@ -31,6 +32,7 @@ class HttpServletHandler(
     init {
         server.createContext(temperatureContext, TemperatureRequestHandler(log, storageHandler))
         server.createContext(dashboardContext, DashboardRequestHandler(log))
+        server.createContext(sensorContext, SensorRequestHandler(log, storageHandler))
         server.createContext("/css/style.css", CSSHandler())
         server.createContext("/js/script.js", JSHandler(wsPort))
         server.createContext("/fonts/Cascadia.woff", FontHandler("Cascadia.woff"))
@@ -223,6 +225,38 @@ class HttpServletHandler(
             finally {
                 exchange.close()
             }
+        }
+    }
+
+    private class SensorRequestHandler(private val log: LogRef, private val storageHandler: StorageHandler) : HttpHandler {
+
+        override fun handle(exchange: HttpExchange) {
+            try {
+                handleListSensors(exchange)
+            }
+            catch (exception: Exception) {
+                when (exception) {
+                    is IOException -> {
+                        log.write("Could not write response. Reason: " + exception.message)
+                    }
+                }
+                exchange.sendResponseHeaders(HttpResponse.INTERNAL_SERVER_ERROR, -1)
+            }
+        }
+
+        private fun handleListSensors(exchange: HttpExchange) {
+            log.write("Received GET sensors from: ${exchange.remoteAddress} on path: ${exchange.requestURI}")
+
+            // Compose sensor JSON and send response headers
+            val sensors = storageHandler.getSensors()
+            val jsonString = JSONUtil.sensorsToJSON(sensors).toString()
+            exchange.sendResponseHeaders(HttpResponse.OK, jsonString.length.toLong())
+
+            // Write response
+            val os = exchange.responseBody
+            os.write(jsonString.toByteArray())
+            os.close()
+            log.write("Successfully served sensor data!")
         }
     }
 

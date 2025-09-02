@@ -26,7 +26,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
 
     private val currentTemperatureReadings = mutableMapOf<Int, TemperatureReading>()
     private val temperatureListeners = mutableListOf<TemperatureListener>()
-    private val sensorIds = mutableMapOf<Int, String>()
+    private val sensors = mutableMapOf<Int, String>()
     private var storedReadings = 0
 
     companion object {
@@ -49,7 +49,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
             readSensorIds()
 
             // Read last stored values
-            sensorIds.forEach { (id, name) ->
+            sensors.forEach { (id, name) ->
                 // Read last received for sensor ID
                 val storedReading = readLastReceived(id, name)
                 if (storedReading != null) {
@@ -65,7 +65,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
                     currentTemperatureReadings[id] = temperatureReading
                 }
             }
-            storedReadings += readStoredReadings(sensorIds).size
+            storedReadings += readStoredReadings(sensors).size
             log.write("Read $storedReadings currently stored readings from disk.")
         }
         catch (exception: JSONException) {
@@ -73,8 +73,12 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
         }
     }
 
+    fun getSensors() : Map<Int, String> {
+        return sensors;
+    }
+
     fun getSensorIds() : Collection<Int> {
-        return currentTemperatureReadings.keys
+        return sensors.keys
     }
 
     fun getCurrentTemperatureReading(sensorId: Int) : TemperatureReading? {
@@ -82,7 +86,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
     }
 
     fun getStoredTemperatureReadings(sensorId: Int) : Collection<TemperatureReading> {
-        return readStoredReadings(sensorIds).filter { it.sensorId == sensorId }
+        return readStoredReadings(sensors).filter { it.sensorId == sensorId }
     }
 
     fun addListener(listener: TemperatureListener) {
@@ -103,6 +107,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
 
         val receivedTemperatureReading = TemperatureReading(sensorId, sensorName, temperature, timestamp)
         currentTemperatureReadings[sensorId] = receivedTemperatureReading
+        sensors[sensorId] = sensorName
 
         // Create JSON object to store on disk
         val storeJson = JSONObject()
@@ -173,7 +178,7 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
 
     private fun readSensorIds() {
         log.write("Reading sensor IDs from disk...")
-        sensorIds.clear()
+        sensors.clear()
 
         val filenames = applicationDataDirPath.toFile().listFiles()
             ?.filter { it.path.contains(LAST_READING_FILE) }
@@ -184,18 +189,18 @@ class StorageHandler(private val log: LogRef, private val applicationDataDirPath
                 val parts = filename.split("_")
                 if (parts.size == 2) {
                     // No sensor ID prefix
-                    sensorIds[-1] = ""
+                    sensors[-1] = ""
                 }
                 else if (parts.size == 4) {
                     // Attempt to parse sensor ID
-                    sensorIds[parts[0].toInt()] = parts[1]
+                    sensors[parts[0].toInt()] = parts[1]
                 }
             }
             catch (exception: NumberFormatException) {
                 log.write("Failed to parse sensor ID from path: $filename")
             }
         }
-        log.write("Successfully read ${sensorIds.size} sensor IDs from disk!")
+        log.write("Successfully read ${sensors.size} sensor IDs from disk!")
     }
 
     private fun readStoredReadings(sensorIds: Map<Int, String>): List<TemperatureReading> {

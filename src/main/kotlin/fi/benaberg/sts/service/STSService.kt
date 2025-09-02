@@ -25,6 +25,7 @@ fun main() {
     val wsPort = propertiesUtil.getProperty("service.port.ws").toInt()
     val temperatureContext = propertiesUtil.getProperty("service.context.temperature")
     val dashboardContext = propertiesUtil.getProperty("service.context.dashboard")
+    val sensorContext = propertiesUtil.getProperty("service.context.sensors")
 
     // Data directories resolved relative to working location
     val applicationDataDir = propertiesUtil.getProperty("service.dir.data.application")
@@ -35,7 +36,7 @@ fun main() {
 
     // Start HTTP server
     thread {
-        val httpServletHandler = HttpServletHandler(log, httpPort, wsPort, temperatureContext, dashboardContext, storageHandler)
+        val httpServletHandler = HttpServletHandler(log, httpPort, wsPort, temperatureContext, dashboardContext, sensorContext, storageHandler)
         httpServletHandler.start()
     }
 
